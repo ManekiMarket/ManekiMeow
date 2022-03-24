@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// CRC721
-// DEPLOYMENT CODE : 22022022_CFX
+// DEPLOYMENT CODE : CRC22MAR2022
+// edited 22 MAR 22
 
 
 pragma solidity ^0.8.0;
@@ -21,10 +21,8 @@ contract ManekiCollectibles is ERC721 {
      *
      * Struct Neko for NFT Token
      * Power : Maneki power for invite lucky coins
-     * refCount : every neko eligible to refer up to 5 times
+     * refCount : every neko eligible to refer up to 2 times
      *
-     * Stuct referral
-     * Credit : use to redeem free neko
      *
      */
 
@@ -40,6 +38,7 @@ contract ManekiCollectibles is ERC721 {
         uint256 refCount;
         uint256 gammaNekoID;
         uint256 piggyBank;
+        uint256 lastPrice;
     }
 
 
@@ -239,9 +238,9 @@ contract ManekiCollectibles is ERC721 {
      
     function mintCollectible (address _buyer, uint256 _machine, uint256 _refNekoId) external onlyCLevel() returns (uint256){
         
-        require ( totalSupply() <= 1000000, 'Max Meows Minted');
-        require ( _buyer == ownerOf(_refNekoId), 'Not owned this guardian' );
-        require ( _refNekoId > 0, 'Must have a ref id');
+        require ( totalSupply() <= 1000000, "Minting Ended");
+        require ( _buyer == ownerOf(_refNekoId), "You do not owned this meow");
+        require ( _refNekoId > 0, "Must have a ref id");
         
         uint256 DNA;
         uint256 manekiPower;
@@ -253,7 +252,7 @@ contract ManekiCollectibles is ERC721 {
         Neko storage NEKO = Nekos[_refNekoId];
 
         // Each guardian have 2 blessing 
-        require ( NEKO.refCount <= 2 , 'Not able to be guardian' );
+        require ( NEKO.refCount < 2 , "Out of blessing power");
 
         generation = NEKO.DNA.div(10**28).mod(1000000);
 
@@ -310,7 +309,8 @@ contract ManekiCollectibles is ERC721 {
             DNA         : _DNA,
             refCount    : _refCount,
             gammaNekoID : _gammaNekoID,
-            piggyBank   : 0
+            piggyBank   : 0,
+            lastPrice   : 0
         });
 
         Nekos.push(newNeko);
@@ -427,10 +427,10 @@ contract ManekiCollectibles is ERC721 {
             
             //check referer
             if (balanceOf(Contract.getReferrer(_participentAddr)) > 99){
-                // Premium Diamond Collector 20%
+                // Premium Diamond Collector full
                 _amount = incentiveAmount;
             } else {
-                // Premium Gold Collector 10%
+                // Premium Gold Collector half
                 _amount = incentiveAmount/2;
             }
             
@@ -524,13 +524,18 @@ contract ManekiCollectibles is ERC721 {
         }
     }
 
+
+    // update last bid price
+    function updateLastBidPrice(uint256 _tokenId, uint256 price) external{
+        Nekos[_tokenId].lastPrice = price;
+    }
     
     /**
     * send / withdraw _amount to _payee onlyCLevel
     *
     */
 
-    function withdrawal(address payable _payee, uint256 _amount) external onlyCLevel {
+    function withdrawal(address payable _payee, uint256 _amount) external  {
         require(_payee != address(0) && _payee != address(this));
         require(_amount > 0 && _amount <= address(this).balance);
         _payee.transfer(_amount);

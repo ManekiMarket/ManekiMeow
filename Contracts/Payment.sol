@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// CRC 721
-// DEPLOYMENT CODE : 22022022_CFX
+// DEPLOYMENT CODE : CRC22MAR2022
+// edited 22 MAR 22
 
 pragma solidity ^0.8.0;
 
@@ -28,7 +28,7 @@ import "./Collectibles.sol";
   * 4. OPTIONAL : A-Token Contract Check This Contract Balance
   */
   
-contract PaymentGateway {
+contract Payment {
     
     constructor(address _collectiblesContract) public {
         CLevel memory newCLevel = CLevel({

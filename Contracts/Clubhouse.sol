@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// DEPLOYMENT CODE : 22022022_CFX
-
+// DEPLOYMENT CODE : CRC22MAR2022
+// edited 22 MAR 22
 
 pragma solidity ^0.8.0;
 
@@ -93,6 +93,7 @@ contract Clubhouse {
     }    
     
     
+
    function addMember (address _member, address _referrer)  public onlyCLevel{
         require (getReferrer(_member)== address(0x0) && _member!=_referrer);
         members[_member].Referrer = _referrer;
@@ -100,12 +101,12 @@ contract Clubhouse {
     }
     
     
-    function getMembers () public view returns (address [] memory, uint256) {
+    function getMembers (address _wallet) public view returns (address [] memory, uint256) {
         address[] memory _members = new address[](Members.length);
         uint count = 0;
         
         for (uint i=0; i< Members.length ; i++){
-            if(getReferrer(Members[i]) == msg.sender) {
+            if(getReferrer(Members[i]) == _wallet) {
                 _members[count] = Members[i];
                 count ++;
             }

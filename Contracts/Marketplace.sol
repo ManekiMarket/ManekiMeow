@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-// DEPLOYMENT CODE : 22022022_CFX
-// validate payment token 
-// edited 28 Feb 2022
+// DEPLOYMENT CODE : CRC22MAR2022
+// edited 22 MAR 22
 
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./Collectibles.sol";
 
 contract Marketplace {
 
@@ -20,6 +20,7 @@ contract Marketplace {
       uint128 endingPrice; // wei
       uint64 duration; // seconds
       uint64 startedAt; // time
+      bool   status;
   }
   struct CLevel {
       address CLevelAddress;
@@ -41,14 +42,26 @@ contract Marketplace {
   CLevel[] public CLevels;
   ERC20Token [] public ERC20Tokens;
 
+  Auction[] public auctions;
+  address public collectiblesContract;
+
+  uint256 public activeAuctionsCount;
+
   uint64 public auctionId; // max is 18446744073709551615
 
   mapping (uint256 => Auction) internal tokenIdToAuction;
   mapping (uint64 => Auction) internal auctionIdToAuction;
+
+  //mapping(address => uint64) internal ownerAuctions;
+  //mapping(bool => uint64[]) internal activeAuctions;
+  // require to delete when bidded
+
+
   // TODO: are arrays of structs even possible?
   //       use this for making auctions discoverable
-  //mapping(address => Auction[]) internal ownerToAuction;
+  mapping (address => Auction[]) internal ownerToAuction;
   //mapping(uint256 => uint256) internal auctionIdToOwnerIndex;
+
 
   event ROLES (address user, uint256 role, bool status);
   event AuctionCreated(uint64 auctionId, uint256 tokenId, IERC20 paymentToken,
@@ -59,8 +72,11 @@ contract Marketplace {
   event WITHDRAWALTOKEN (IERC20 indexed _tokenAddress, address indexed _walletAddress, uint256 _balance);
   event ADDPAYMENTTOKEN (IERC20 indexed _tokenAddress, string indexed _tokenSymbol);
 
-  constructor(IERC721 _NFTAddress, uint64 _fee) public {
+  constructor(address _NFTAddress, uint64 _fee) public {
       NFTContract = IERC721(_NFTAddress);
+
+      collectiblesContract = _NFTAddress;
+
       fee = _fee; // 3.500 as 3500
 
       CLevel memory newCLevel = CLevel({
@@ -131,10 +147,6 @@ contract Marketplace {
 
 
 
-
-  // return ether that is sent to this contract
-  //function() external {}
-
   
 
    function createAuction(
@@ -158,11 +170,16 @@ contract Marketplace {
           uint128(_startingPrice),
           uint128(_endingPrice),
           uint64(_duration),
-          uint64(_startAt)
+          uint64(_startAt),
+          bool (true)
       );
 
+      auctions.push(auction);
       tokenIdToAuction[_tokenId] = auction;
       auctionIdToAuction[auctionId] = auction;
+
+      activeAuctionsCount++;
+
 
       // deposit NFT for escrow 
       _escrow (_tokenId);
@@ -191,6 +208,7 @@ contract Marketplace {
         // @thisContract, @toSelller, @NFTid
         NFTContract.transferFrom(address(this),msg.sender,_tokenID);
     }
+
     
   function getAuctionByAuctionId(uint64 _auctionId) public view returns (
       uint64 id,
@@ -200,7 +218,8 @@ contract Marketplace {
       uint256 startingPrice,
       uint256 endingPrice,
       uint256 duration,
-      uint256 startedAt
+      uint256 startedAt,
+      bool    status
   ) {
       Auction storage auction = auctionIdToAuction[_auctionId];
       require(auction.startedAt > 0);
@@ -212,7 +231,8 @@ contract Marketplace {
           auction.startingPrice,
           auction.endingPrice,
           auction.duration,
-          auction.startedAt
+          auction.startedAt,
+          auction.status
       );
   }
 
@@ -224,7 +244,8 @@ contract Marketplace {
       uint256 startingPrice,
       uint256 endingPrice,
       uint256 duration,
-      uint256 startedAt
+      uint256 startedAt,
+      bool status
   ) {
       Auction storage auction = tokenIdToAuction[_tokenId];
       require(auction.startedAt > 0);
@@ -236,16 +257,18 @@ contract Marketplace {
           auction.startingPrice,
           auction.endingPrice,
           auction.duration,
-          auction.startedAt
+          auction.startedAt,
+          auction.status
       );
   }
-
   function cancelAuctionByAuctionId(uint64 _auctionId) public {
       Auction storage auction = auctionIdToAuction[_auctionId];
 
       require(auction.startedAt > 0);
       require(msg.sender == auction.seller);
 
+
+      auctions[auction.id].status = false;
       delete auctionIdToAuction[auction.id];
       delete tokenIdToAuction[auction.tokenId];
 
@@ -259,6 +282,7 @@ contract Marketplace {
       require(auction.startedAt > 0);
       require(msg.sender == auction.seller);
 
+      auctions[auction.id].status = false;
       delete auctionIdToAuction[auction.id];
       delete tokenIdToAuction[auction.tokenId];
 
@@ -274,11 +298,16 @@ contract Marketplace {
       uint256 price = getCurrentPrice(auction);
       require(msg.value >= price);
 
+
       address payable seller = payable(auction.seller);
+
+      auctions[auction.id].status = false;
 
       delete auctionIdToAuction[auction.id];
       delete tokenIdToAuction[auction.tokenId];
-
+      
+      
+      activeAuctionsCount--;
 
       if (price > 0) {
           uint256 sellerProceeds = msg.value - (msg.value*fee/100000);
@@ -288,7 +317,14 @@ contract Marketplace {
       NFTContract.approve(msg.sender, _tokenId);
       NFTContract.transferFrom(address(this), msg.sender, _tokenId);
 
-      emit AuctionSuccessful(auction.id, _tokenId,"CFX", price, msg.sender);
+
+      //update last bid price into Collectible contract
+
+      ManekiCollectibles Contract = ManekiCollectibles(collectiblesContract);
+
+      Contract.updateLastBidPrice( _tokenId, msg.value);
+
+      emit AuctionSuccessful(auction.id, _tokenId,"CFX", msg.value, msg.sender);
   } 
 
 
@@ -318,8 +354,7 @@ contract Marketplace {
 
       address payable seller = payable(auction.seller);
 
-      delete auctionIdToAuction[auction.id];
-      delete tokenIdToAuction[auction.tokenId];
+      //auction.isActive = false;
 
       if (price > 0) {
           uint256 sellerProceeds = _amount - (_amount*fee/100000);
@@ -331,6 +366,29 @@ contract Marketplace {
 
       emit AuctionSuccessful(auction.id, _tokenId, tokenSymbol, price, msg.sender);
   } 
+
+
+  function getActiveAuctions() public view returns(uint64 [] memory) {
+
+    uint64[] memory activeAuctions = new uint64[](activeAuctionsCount);
+    uint64 counter = 0; 
+
+    for(uint64 i = 0; i < auctionId; i++){
+
+        if(auctions[i].status == true){
+            activeAuctions[counter] = auctions[i].id;
+            counter++;
+        }
+
+    }
+    return activeAuctions;
+  }
+  
+
+  function getActiveAuctionCount() public view returns(uint256) {
+    return activeAuctionsCount;
+  }
+
 
   function getCurrentPriceByAuctionId(uint64 _auctionId) public view returns (uint256) {
       Auction storage auction = auctionIdToAuction[_auctionId];
@@ -427,4 +485,11 @@ contract Marketplace {
         }
         return _tokenStatus;
     }
+
+    /**
+     * activeAuction()
+     * auctionByWallet()
+     */
+  
+
 }
