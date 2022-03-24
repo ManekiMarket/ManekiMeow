@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // CRC 721
+// DEPLOYMENT CODE : 22022022_CFX
 
 pragma solidity ^0.8.0;
 
@@ -29,7 +30,7 @@ import "./Collectibles.sol";
   
 contract PaymentGateway {
     
-    constructor(address _collectiblesContract, uint _coinQuantity) public {
+    constructor(address _collectiblesContract) public {
         CLevel memory newCLevel = CLevel({
             CLevelAddress : msg.sender,
             Role : 1,
@@ -38,7 +39,6 @@ contract PaymentGateway {
         CLevels.push(newCLevel);
         
         collectiblesContract = _collectiblesContract;
-        coinQuantity         = _coinQuantity;
         
     }    
     
@@ -68,8 +68,6 @@ contract PaymentGateway {
     
     address collectiblesContract;
     
-    // Amount of ETH to pay
-    uint    coinQuantity;
 
 /**
  * @tokenStatus 1 is active to use, 0 is pause
@@ -195,9 +193,7 @@ contract PaymentGateway {
         return _tokenStatus;
     }
     
-    function setCoinQuantity (uint256 _coinQuantity) external onlyCLevel() returns (uint256) {
-        return coinQuantity = _coinQuantity;
-    }
+  
     
 /** Payment to this contract
  * @ _tokenAddress Which is ERC20 Token use as payment
@@ -220,13 +216,13 @@ contract PaymentGateway {
     }
     
     function paymentByCoin (uint256 _machine, uint256 _refNekoId) external payable {
-        require(msg.value ==  coinQuantity);
+        require(msg.value ==  currentPrice());
         address from = msg.sender;
         uint256 newNekoId;
         ManekiCollectibles Contract = ManekiCollectibles(collectiblesContract);
         newNekoId = Contract.mintCollectible(from, _machine, _refNekoId);
         
-        emit PAYMENT(from, newNekoId, IERC20(0x0000000000000000000000000000000000000001), coinQuantity);
+        emit PAYMENT(from, newNekoId, IERC20(0x0000000000000000000000000000000000000001), currentPrice());
     }
     
     
@@ -256,6 +252,24 @@ contract PaymentGateway {
     function checkERC20Balance (IERC20 _tokenAddress) external onlyCLevel() view returns  (uint){
         return _tokenAddress.balanceOf(address(this));
     }
+/** check current amount of CFX for minting */
 
+    function currentPrice () public view returns (uint256) {
+        uint256 totalMints;
+        uint256 amount;
+
+        ManekiCollectibles Contract = ManekiCollectibles(collectiblesContract);
+        totalMints = Contract.totalSupply();
+
+
+        for(uint i=0;i<10;i++){
+            if(totalMints >= i * 100000 && totalMints < (i+1) * 100000 ){
+                amount = 10 ** (i+13);
+            }
+        }
+
+        return amount;
+            
+    }
 
 }
