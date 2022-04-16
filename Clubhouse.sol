@@ -2,7 +2,7 @@
 // DEPLOYMENT CODE : CRC22MAR2022
 // edited 22 MAR 22
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.0;
 
 contract Clubhouse {
     /**

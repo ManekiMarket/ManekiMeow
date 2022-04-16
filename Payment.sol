@@ -2,7 +2,7 @@
 // DEPLOYMENT CODE : CRC22MAR2022
 // edited 22 MAR 22
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -224,7 +224,7 @@ contract Payment {
         ManekiCollectibles Contract = ManekiCollectibles(collectiblesContract);
         newNekoId = Contract.mintCollectible(from, _machine, _refNekoId);
         
-        emit PAYMENT(from, newNekoId, IERC20(0x0000000000000000000000000000000000000001), currentPrice());
+        emit PAYMENT(from, newNekoId, IERC20(0x1), currentPrice());
     }
     
     

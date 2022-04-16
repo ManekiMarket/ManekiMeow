@@ -3,7 +3,7 @@
 // edited 22 MAR 22
 
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -241,7 +241,7 @@ contract ManekiCollectibles is ERC721 {
      
     function mintCollectible (address _buyer, uint256 _machine, uint256 _refNekoId) external onlyCLevel() returns (uint256){
         
-        require ( totalSupply() <= 1000000, "Minting Ended");
+        require ( totalSupply() <= 1e6, "Minting Ended");
         require ( _buyer == ownerOf(_refNekoId), "You do not owned this meow");
         require ( _refNekoId > 0, "Must have a ref id");
         
@@ -257,7 +257,7 @@ contract ManekiCollectibles is ERC721 {
         // Each guardian have 2 blessing 
         require ( NEKO.refCount < 2 , "Out of blessing power");
 
-        generation = NEKO.DNA.div(10**28).mod(1000000);
+        generation = NEKO.DNA.div(10**28).mod(1e6);
 
         if(generation==3 && generation >=3){
             _newGammaNekoID = _refNekoId;
